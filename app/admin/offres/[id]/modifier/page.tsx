@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Briefcase, MapPin, Users, Calendar, X, Upload } from 'lucide-react'
+import { useRouter, useParams } from 'next/navigation'
+import { Briefcase, Upload, X, ArrowLeft } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +11,6 @@ import Navbar from '@/components/Navbar'
 import HeroSection from '@/components/HeroSection'
 import Footer from '@/components/Footer'
 import { toast } from 'react-toastify'
-import { CONTRACT_TYPE_LABELS } from '@/types'
 
 interface JobOffer {
   id: number
@@ -24,15 +24,12 @@ interface JobOffer {
   description: string
   skills: string[]
   status: 'published' | 'draft'
-  created_at: string
-  updated_at: string
-  created_by: number
 }
 
-export default function AdminOffresPage() {
-  const [offers, setOffers] = useState<JobOffer[]>([])
+export default function ModifierOffrePage() {
+  const router = useRouter()
+  const params = useParams()
   const [isLoading, setIsLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>('')
   const [formData, setFormData] = useState({
@@ -47,19 +44,37 @@ export default function AdminOffresPage() {
   })
 
   useEffect(() => {
-    fetchOffers()
-  }, [])
+    if (params.id) {
+      fetchOffer()
+    }
+  }, [params.id])
 
-  const fetchOffers = async () => {
+  const fetchOffer = async () => {
     try {
-      const res = await jobsAPI.getAll()
+      const res = await jobsAPI.getOne(parseInt(params.id as string))
       if (res.ok) {
-        const data = await res.json()
-        setOffers(data)
+        const data: JobOffer = await res.json()
+        setFormData({
+          title: data.title,
+          company: data.company,
+          location: data.location,
+          contract_type: data.contract_type,
+          salary: data.salary,
+          application_deadline: data.application_deadline,
+          description: data.description,
+          skills: data.skills.join('\n')
+        })
+        if (data.image) {
+          setImagePreview(data.image)
+        }
+      } else {
+        toast.error('Offre non trouvée')
+        router.push('/admin/offres')
       }
     } catch (error) {
       console.error('Erreur:', error)
-      toast.error('Erreur lors du chargement des offres')
+      toast.error('Erreur lors du chargement de l\'offre')
+      router.push('/admin/offres')
     } finally {
       setIsLoading(false)
     }
@@ -68,7 +83,6 @@ export default function AdminOffresPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validation
       if (file.size > 2 * 1024 * 1024) {
         toast.error('Image trop grande (max 2MB)')
         return
@@ -101,7 +115,6 @@ export default function AdminOffresPage() {
     }
 
     try {
-      // Créer FormData pour envoyer l'image si présente
       const formDataToSend = new FormData()
       formDataToSend.append('title', formData.title)
       formDataToSend.append('company', formData.company)
@@ -112,7 +125,6 @@ export default function AdminOffresPage() {
       formDataToSend.append('description', formData.description)
       formDataToSend.append('status', 'published')
 
-      // Skills (array)
       const skillsArray = formData.skills.split('\n').filter(s => s.trim())
       skillsArray.forEach(skill => {
         formDataToSend.append('skills', skill.trim())
@@ -123,8 +135,8 @@ export default function AdminOffresPage() {
       }
 
       const token = localStorage.getItem('authToken')
-      const response = await fetch('https://din-recruitment.onrender.com/api/jobs/joboffers/', {
-        method: 'POST',
+      const response = await fetch(`https://din-recruitment.onrender.com/api/jobs/joboffers/${params.id}/`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -134,37 +146,24 @@ export default function AdminOffresPage() {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success('Offre créée avec succès !')
-        setShowModal(false)
-        setFormData({
-          title: '',
-          company: '',
-          location: '',
-          contract_type: 'cdi',
-          salary: '',
-          application_deadline: '',
-          description: '',
-          skills: ''
-        })
-        setImageFile(null)
-        setImagePreview('')
-        fetchOffers()
+        toast.success('Offre modifiée avec succès !')
+        router.push('/admin/offres')
       } else {
         console.error('Erreur API:', data)
         toast.error(data.message || Object.values(data).flat().join(', ') || 'Une erreur est survenue')
       }
     } catch (error) {
       console.error('Erreur:', error)
-      toast.error('Une erreur est survenue lors de la création')
+      toast.error('Une erreur est survenue lors de la modification')
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#0F5D8C' }}></div>
+      </div>
+    )
   }
 
   return (
@@ -172,144 +171,29 @@ export default function AdminOffresPage() {
       <Navbar />
 
       <HeroSection
-        title="Gestion des offres d'emploi"
-        subtitle="Créez et gérez vos offres d'emploi"
+        title="Modifier l'offre d'emploi"
+        subtitle="Mettez à jour les informations de l'offre"
         breadcrumbs={[
           { label: 'Accueil', href: '/' },
-          { label: 'Administration', href: '/admin' }
+          { label: 'Administration', href: '/admin' },
+          { label: 'Offres', href: '/admin/offres' },
+          { label: 'Modifier' }
         ]}
       />
 
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold" style={{ color: '#0F5D8C' }}>Offres d'emploi</h2>
-            <p className="text-gray-600 mt-1">{offers.length} offre{offers.length > 1 ? 's' : ''} au total</p>
-          </div>
-          <Button
-            onClick={() => setShowModal(true)}
-            className="text-white flex items-center gap-2"
-            style={{ backgroundColor: '#0F5D8C' }}
-          >
-            <Plus className="w-5 h-5" />
-            Nouvelle offre
-          </Button>
-        </div>
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <Button
+          variant="outline"
+          onClick={() => router.push('/admin/offres')}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Retour aux offres
+        </Button>
 
-        {/* Liste des offres */}
-        {isLoading ? (
-          <div className="text-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#0F5D8C' }}></div>
-          </div>
-        ) : offers.length === 0 ? (
-          <div className="text-center py-16">
-            <Briefcase className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-gray-500 mb-2">Aucune offre pour le moment</h3>
-            <p className="text-gray-400 mb-6">Créez votre première offre d'emploi</p>
-            <Button
-              onClick={() => setShowModal(true)}
-              className="text-white"
-              style={{ backgroundColor: '#0F5D8C' }}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Créer une offre
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {offers.map((offer) => (
-              <Card key={offer.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-0">
-                  <div className="flex">
-                    {/* Image ou placeholder */}
-                    <div 
-                      className="w-64 flex-shrink-0 flex items-center justify-center"
-                      style={{ backgroundColor: '#0F5D8C' }}
-                    >
-                      {offer.image ? (
-                        <img src={offer.image} alt={offer.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <Briefcase className="w-20 h-20 text-white" />
-                      )}
-                    </div>
-
-                    {/* Contenu */}
-                    <div className="flex-1 p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-2xl font-bold" style={{ color: '#0F5D8C' }}>
-                              {offer.title}
-                            </h3>
-                            <span className="px-3 py-1 bg-green-100 text-green-800 border border-green-200 rounded-full text-sm">
-                              Active
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-gray-600">
-                            <div className="flex items-center gap-1">
-                              <Briefcase className="w-4 h-4" />
-                              <span>{offer.company}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              <span>{offer.location}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Users className="w-4 h-4" />
-                              <span>1 candidature</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-green-600">{offer.salary}</p>
-                          <p className="text-sm text-gray-600 uppercase">{CONTRACT_TYPE_LABELS[offer.contract_type as keyof typeof CONTRACT_TYPE_LABELS]}</p>
-                        </div>
-                      </div>
-
-                      <p className="text-gray-700 mb-4 line-clamp-2">{offer.description}</p>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Calendar className="w-4 h-4" />
-                          <span>Limite: {formatDate(offer.application_deadline)}</span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          onClick={() => window.location.href = `/admin/offres/${offer.id}/modifier`}
-                        >
-                          Modifier
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Modal création offre */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold" style={{ color: '#0F5D8C' }}>
-                Nouvelle offre d'emploi
-              </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false)
-                  setImagePreview('')
-                  setImageFile(null)
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Upload image */}
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -453,7 +337,7 @@ export default function AdminOffresPage() {
                   Compétences et exigences <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  placeholder="Une compétence par ligne Ex: Maîtrise de React et TypeScript&#10;Expérience en développement web&#10;Autonomie et esprit d'équipe"
+                  placeholder="Une compétence par ligne"
                   value={formData.skills}
                   onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 min-h-[100px]"
@@ -467,11 +351,7 @@ export default function AdminOffresPage() {
                   type="button"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => {
-                    setShowModal(false)
-                    setImagePreview('')
-                    setImageFile(null)
-                  }}
+                  onClick={() => router.push('/admin/offres')}
                 >
                   Annuler
                 </Button>
@@ -481,13 +361,13 @@ export default function AdminOffresPage() {
                   style={{ backgroundColor: '#0F5D8C' }}
                 >
                   <Briefcase className="w-4 h-4 mr-2" />
-                  Créer l'offre
+                  Enregistrer les modifications
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Footer />
     </div>

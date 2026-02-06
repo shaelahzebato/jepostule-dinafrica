@@ -1,111 +1,102 @@
+// app/candidat/page.tsx
 'use client'
 
 import { useEffect } from 'react'
-import { useUser } from '@/context/UserContext'
 import { useRouter } from 'next/navigation'
-import { Briefcase, FileText } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import Header from '@/components/Header'
+import { FileText, Briefcase, ArrowRight } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { useUser } from '@/context/UserContext'
+import Navbar from '@/components/Navbar'
 import HeroSection from '@/components/HeroSection'
 import Footer from '@/components/Footer'
 
-export default function CandidatDashboard() {
-  const { user, isLoading } = useUser()
+export default function CandidatHomePage() {
   const router = useRouter()
+  const { user } = useUser()
 
   useEffect(() => {
-    if (isLoading) return
-
-    if (!user) {
-      router.replace('/signin')
-      return
+    if (!user || user.role !== 'candidat') {
+      router.push('/signin')
     }
+  }, [user, router])
 
-    if (user.role === 'admin') {
-      router.replace('/admin')
-    }
-  }, [user, isLoading, router])
-
-  if (isLoading || !user || user.role !== 'candidat') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
+  if (!user) return null
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header showActionButton actionButtonText="Postuler" actionButtonHref="/offres" />
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
       
-      <HeroSection 
-        title="Trouvez votre prochain emploi"
-        subtitle="Découvrez nos offres d'emploi ou envoyez-nous votre candidature spontanée"
+      <HeroSection
+        title="Bienvenue<br />Candidat"
+        subtitle="Explorez les opportunités et postulez pour votre prochain défi."
         breadcrumbs={[
-          { label: 'Accueil', href: '/candidat' },
+          { label: 'Accueil', href: '/' },
           { label: 'Espace candidat' }
         ]}
       />
 
-      <div className="max-w-5xl mx-auto px-4 py-12 flex-1">
-        <h2 className="text-3xl font-bold text-center mb-12" style={{ color: '#0F5D8C' }}>
-          Comment souhaitez-vous postuler ?
-        </h2>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Section "Comment souhaitez-vous postuler ?" */}
+        <div className="text-center mb-16">
+          <h2 
+            className="text-3xl font-bold mb-8" 
+            style={{ color: '#0F5D8C', fontFamily: 'Poppins, sans-serif' }}
+          >
+            Comment souhaitez-vous postuler ?
+          </h2>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Candidature spontanée */}
-          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
-            <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: '#0F5D8C' }}>
-              <FileText className="w-10 h-10 text-white" />
-            </div>
-            <h3 className="text-2xl font-semibold text-center mb-4" style={{ color: '#0F5D8C' }}>
-              Candidature spontanée
-            </h3>
-            <p className="text-gray-600 text-center mb-6">
-              Envoyez-nous votre CV et laissez-nous découvrir votre potentiel. Nous vous contacterons si un poste correspond à votre profil.
-            </p>
-            <Link href="/candidature-spontanee">
-              <Button className="w-full text-white font-semibold hover:opacity-90 transition-opacity" style={{ backgroundColor: '#0F5D8C' }}>
-                Postuler spontanément →
-              </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* CANDIDATURE SPONTANÉE */}
+            <Link href="/candidat/candidature-spontanee">
+              <Card className="cursor-pointer transform transition-all hover:scale-105 hover:shadow-xl border-2 border-transparent hover:border-blue-200 h-full">
+                <CardContent className="p-8">
+                  <div className="text-center">
+                    <div 
+                      className="p-4 rounded-full mx-auto mb-6 w-20 h-20 flex items-center justify-center" 
+                      style={{ backgroundColor: '#0F5D8C' }}
+                    >
+                      <FileText className="h-10 w-10 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-4" style={{ color: '#0F5D8C' }}>
+                      Candidature spontanée
+                    </h3>
+                    <p className="text-gray-600 mb-6 leading-relaxed">
+                      Envoyez-nous votre CV et laissez-nous découvrir votre potentiel. Nous vous contacterons si un poste correspond à votre profil.
+                    </p>
+                    <div className="flex items-center justify-center text-blue-600 font-medium">
+                      Postuler spontanément
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </Link>
-          </div>
 
-          {/* Postuler à une offre */}
-          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
-            <div className="w-20 h-20 rounded-full bg-green-600 mx-auto mb-6 flex items-center justify-center">
-              <Briefcase className="w-10 h-10 text-white" />
-            </div>
-            <h3 className="text-2xl font-semibold text-center mb-4" style={{ color: '#0F5D8C' }}>
-              Postuler à une offre
-            </h3>
-            <p className="text-gray-600 text-center mb-6">
-              Consultez nos offres d'emploi actuelles et postulez directement pour les postes qui vous intéressent.
-            </p>
-            <Link href="/offres">
-              <Button className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors">
-                Voir les offres →
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Section Auto-évaluation */}
-        <div className="mt-12 bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#0F5D8C' }}>
-                💡 Complétez votre auto-évaluation
-              </h3>
-              <p className="text-gray-600">
-                Augmentez vos chances d'être recruté en complétant votre profil professionnel
-              </p>
-            </div>
-            <Link href="/auto-evaluation">
-              <Button variant="outline" className="whitespace-nowrap">
-                Commencer →
-              </Button>
+            {/* POSTULER À UNE OFFRE */}
+            <Link href="/candidat/offres">
+              <Card className="cursor-pointer transform transition-all hover:scale-105 hover:shadow-xl border-2 border-transparent hover:border-blue-200 h-full">
+                <CardContent className="p-8">
+                  <div className="text-center">
+                    <div 
+                      className="p-4 rounded-full mx-auto mb-6 w-20 h-20 flex items-center justify-center" 
+                      style={{ backgroundColor: '#0F5D8C' }}
+                    >
+                      <Briefcase className="h-10 w-10 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-4" style={{ color: '#0F5D8C' }}>
+                      Postuler à une offre
+                    </h3>
+                    <p className="text-gray-600 mb-6 leading-relaxed">
+                      Consultez nos offres d&apos;emploi actuelles et postulez directement pour les postes qui vous intéressent.
+                    </p>
+                    <div className="flex items-center justify-center text-blue-600 font-medium">
+                      Voir les offres
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </Link>
           </div>
         </div>
